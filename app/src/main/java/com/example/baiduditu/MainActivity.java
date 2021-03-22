@@ -27,6 +27,18 @@ import com.baidu.mapapi.map.MapView;
 import com.baidu.mapapi.map.MyLocationConfiguration;
 import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.model.LatLng;
+import com.baidu.mapapi.overlayutil.WalkingRouteOverlay;
+import com.baidu.mapapi.search.core.SearchResult;
+import com.baidu.mapapi.search.route.BikingRouteResult;
+import com.baidu.mapapi.search.route.DrivingRouteResult;
+import com.baidu.mapapi.search.route.IndoorRouteResult;
+import com.baidu.mapapi.search.route.MassTransitRouteResult;
+import com.baidu.mapapi.search.route.OnGetRoutePlanResultListener;
+import com.baidu.mapapi.search.route.PlanNode;
+import com.baidu.mapapi.search.route.RoutePlanSearch;
+import com.baidu.mapapi.search.route.TransitRouteResult;
+import com.baidu.mapapi.search.route.WalkingRoutePlanOption;
+import com.baidu.mapapi.search.route.WalkingRouteResult;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +62,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public BDAbstractLocationListener myListener;
     private LatLng mLastLocationData;
     private boolean isFirstin = true;
+    //路线规划相关
+    private RoutePlanSearch mSearch = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,11 +71,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         SDKInitializer.initialize(getApplicationContext());
         setContentView(R.layout.activity_main);
         SDKInitializer.setCoordType(CoordType.BD09LL);
+        SDKInitializer.setHttpsEnable(true);
         this.context = this;
         mMapView = (MapView) findViewById(R.id.bmapView);
         //获取地图控件引用
         mBaiduMap = mMapView.getMap();
         initMyLocation();
+        //路线规划方法
+        initPoutePlan();
         button();
     }
     protected void onStart() {
@@ -107,6 +124,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 centerToMyLocation(mLatitude, mLongtitude);
                 break;
             }
+            case R.id.but_RoutrPlan:{
+                StarRoute();
+            }
         }
     }
 
@@ -114,8 +134,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void button() {
         //按钮
         Button mbut_Loc = findViewById(R.id.but_Loc);
+        Button mbut_RoutrPlan = (Button) findViewById(R.id.but_RoutrPlan);
         //按钮处理
         mbut_Loc.setOnClickListener(this);
+        mbut_RoutrPlan.setOnClickListener(this);
     }
 
     //定位
@@ -224,6 +246,77 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         });
     }
+    //initMyLocation 中调用的方法，同样用于定位。 5
+    private void requestLocation() {
+        //开始定位，定位结果会回调到前面注册的监听器中
+        mLocationClient.start();
+    }
+
+    //路线规划初始化
+    private void initPoutePlan() {
+        mSearch = RoutePlanSearch.newInstance();
+        mSearch.setOnGetRoutePlanResultListener(listener);
+    }
+
+    // 路线规划模块
+    public OnGetRoutePlanResultListener listener = new OnGetRoutePlanResultListener() {
+        @Override
+        public void onGetWalkingRouteResult(WalkingRouteResult result) {
+            if (result == null || result.error != SearchResult.ERRORNO.NO_ERROR) {
+                Toast.makeText(MainActivity.this, "路线规划:未找到结果,检查输入", Toast.LENGTH_SHORT).show();
+                //禁止定位
+                isFirstin = false;
+            }
+            assert result != null;
+            if (result.error == SearchResult.ERRORNO.AMBIGUOUS_ROURE_ADDR) {
+                // 起终点或途经点地址有岐义，通过以下接口获取建议查询信息
+                result.getSuggestAddrInfo();
+                return;
+            }
+            if (result.error == SearchResult.ERRORNO.NO_ERROR) {
+                mBaiduMap.clear();
+                Toast.makeText(MainActivity.this, "路线规划:搜索完成", Toast.LENGTH_SHORT).show();
+                WalkingRouteOverlay overlay = new WalkingRouteOverlay(mBaiduMap);
+                overlay.setData(result.getRouteLines().get(0));
+                overlay.addToMap();
+                overlay.zoomToSpan();
+            }
+            //禁止定位
+            isFirstin = false;
+        }
+
+        @Override
+        public void onGetTransitRouteResult(TransitRouteResult var1) {
+        }
+
+        @Override
+        public void onGetMassTransitRouteResult(MassTransitRouteResult var1) {
+        }
+
+        @Override
+        public void onGetDrivingRouteResult(DrivingRouteResult result) {
+        }
+
+        @Override
+        public void onGetIndoorRouteResult(IndoorRouteResult var1) {
+        }
+
+        @Override
+        public void onGetBikingRouteResult(BikingRouteResult var1) {
+        }
+    };
+
+    //开始规划，这里实现多种不同的路线规划方式。
+    private void StarRoute() {
+        SDKInitializer.initialize(getApplicationContext());
+        // 设置起、终点信息
+        PlanNode stNode = PlanNode.withCityNameAndPlaceName("北京", "西二旗地铁站");
+        PlanNode enNode = PlanNode.withCityNameAndPlaceName("北京", "百度科技园");
+        mSearch.walkingSearch((new WalkingRoutePlanOption())
+                .from(stNode)
+                .to(enNode));
+    }
 }
+
 
 
