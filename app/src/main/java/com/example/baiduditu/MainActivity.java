@@ -310,8 +310,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void StarRoute() {
         SDKInitializer.initialize(getApplicationContext());
         // 设置起、终点信息
-        PlanNode stNode = PlanNode.withCityNameAndPlaceName("北京", "西二旗地铁站");
-        PlanNode enNode = PlanNode.withCityNameAndPlaceName("北京", "百度科技园");
+        PlanNode stNode = PlanNode.withCityNameAndPlaceName("云南", "大理大学古城校区");
+        PlanNode enNode = PlanNode.withCityNameAndPlaceName("云南", "大理古城");
         mSearch.walkingSearch((new WalkingRoutePlanOption())
                 .from(stNode)
                 .to(enNode));
